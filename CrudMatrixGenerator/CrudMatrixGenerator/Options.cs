@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 
 namespace Net.Surviveplus.CrudMatrixGenerator
@@ -12,6 +13,9 @@ namespace Net.Surviveplus.CrudMatrixGenerator
 
         [Index(1)]
         public FileInfo OutputFile { get; set; } = new FileInfo("output.txt");
+
+        [Switch("DesignerSourceCode", true)]
+        public bool DesignerSourceCodeOnly { get; set; } = false;
 
         private List<string> backingOfErrors;
 
@@ -25,7 +29,7 @@ namespace Net.Surviveplus.CrudMatrixGenerator
 
                     if(!this.TargetFolder.Exists)
                     {
-                        r.Add("TargetFolder Not Exists");
+                        r.Add("Target Folder Path : Not Exists");
                     }
 
                     if (!this.OutputFile.Directory.Exists) {
@@ -44,7 +48,7 @@ namespace Net.Surviveplus.CrudMatrixGenerator
                     }
                     catch
                     {
-                        r.Add("OutputFile is not written.");
+                        r.Add("Output File File : Can not be written.");
                     }
                     this.backingOfErrors = r;
                 }
@@ -101,6 +105,21 @@ namespace Net.Surviveplus.CrudMatrixGenerator
                         setProperty(property, text);
                     }
                 }
+
+                foreach (SwitchAttribute a in Attribute.GetCustomAttributes(property, typeof(SwitchAttribute)))
+                {
+                    var switchTextA = $"-{a.SwitchText}";
+                    var switchTextB = $"/{a.SwitchText}";
+
+                    var q = from arg in args
+                            where switchTextA.StartsWith(arg, StringComparison.CurrentCultureIgnoreCase) | switchTextB.StartsWith(arg, StringComparison.CurrentCultureIgnoreCase)
+                            select a;
+                    if(q.Any())
+                    {
+                        property.SetValue(r, a.ValueWhenSwitchIsOn);
+                    }
+                }
+
             }
 
 
@@ -113,6 +132,18 @@ namespace Net.Surviveplus.CrudMatrixGenerator
     {
         public int Index { get; set; }
         public IndexAttribute(int index) => this.Index = index;
+    }
+
+    public class SwitchAttribute : Attribute
+    {
+        public string SwitchText { get; set; }
+        public object ValueWhenSwitchIsOn { get; set; }
+
+        public SwitchAttribute(string switchText, object valueWhenSwitchIsOn)
+        {
+            this.SwitchText = switchText;
+            this.ValueWhenSwitchIsOn = valueWhenSwitchIsOn;
+        }
     }
 
 } // end namespace
